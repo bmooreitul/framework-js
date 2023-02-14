@@ -206,7 +206,7 @@ function init_fill_height(trigger = true){
 		event.stopPropagation();
 		event.preventDefault();
 
-		var uploadUrl = typeof($(event.target).attr('data-uploadurl')) !== 'undefined' ? $(event.target).attr('data-uploadurl') : itulOptions.files.uploadUrl;
+		var uploadUrl = typeof($(event.target).attr('data-uploadurl')) !== 'undefined' ? itulOptions.files.uploadUrl : $(event.target).attr('data-uploadurl');
 
 		var files = typeof(add_files) !== 'undefined' ? add_files : event.target.files;
 
