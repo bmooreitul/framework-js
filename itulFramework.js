@@ -482,7 +482,7 @@ function init_fill_height(trigger = true){
 		}
 		
 		var modal_header =
-			'<div class="modal-header modal-bg-blue text-white">' +
+			'<div class="modal-header">' +
 				'<h5 class="modal-title d-inline-block">' + title + '</h5>'+
 				dismissButton+
 			'</div>';
