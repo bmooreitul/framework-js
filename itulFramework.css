@@ -1,0 +1,78 @@
+.loader-overlay,
+.loader-overlay:after {
+	border-radius: 50%;
+	width: 100px;
+	height: 100px;
+}
+.loader-overlay {
+	margin: calc(20% - 50px) auto;
+	font-size: 10px;
+	position: relative;
+	text-indent: -9999em;
+	border-top: 1.1em solid rgb(0 37 233 / 20%);
+    border-right: 1.1em solid rgb(0 37 233 / 20%);
+    border-bottom: 1.1em solid rgb(0 37 233 / 20%);
+    border-left: 1.1em solid #342be6;
+	-webkit-transform: translateZ(0);
+	-ms-transform: translateZ(0);
+	transform: translateZ(0);
+	-webkit-animation: load8 1.1s infinite linear;
+	animation: load8 1.1s infinite linear;
+}
+
+.loader-overlay-wrap {
+	position: fixed;
+	top: 0;
+	left: 0;
+	bottom: 0;
+	right: 0;
+	background: #ffffffb5;
+	z-index: 99999;
+}
+@-webkit-keyframes load8 {
+	0% {
+		-webkit-transform: rotate(0deg);
+		transform: rotate(0deg);
+	}
+	100% {
+		-webkit-transform: rotate(360deg);
+		transform: rotate(360deg);
+	}
+}
+@keyframes load8 {
+	0% {
+		-webkit-transform: rotate(0deg);
+		transform: rotate(0deg);
+	}
+	100% {
+		-webkit-transform: rotate(360deg);
+		transform: rotate(360deg);
+	}
+}
+
+
+
+.drag-and-drop-file-upload.dragging-over {
+	background-color: #d9f7ec;
+	cursor: alias !important;
+	background:   linear-gradient(90deg, #a6f1bc 50%, transparent 50%), /* top line */ 
+	linear-gradient(90deg, #a6f1bc 50%, transparent 50%),   			/* bottom line */
+	linear-gradient(0deg, #a6f1bc 50%, transparent 50%),  				/* left line */
+	linear-gradient(0deg, #a6f1bc 50%, transparent 50%),    			/* right line */
+	linear-gradient(#d9f7ec, #d9f7ec);            						/* background color */
+	
+	background-repeat: repeat-x, repeat-x, repeat-y, repeat-y, repeat;
+	background-size: 16px 3px, 16px 3px, 3px 16px, 3px 16px, 100% 100%;
+	animation: draganddrop-border-animation .3s linear infinite;
+	border: none;
+	padding: 18px;
+}
+
+@keyframes draganddrop-border-animation {
+	from {
+		background-position: 0px 0px, 16px 100%, 100% 0px, 0px 16px, 0px 0px;
+	}
+	to {
+		background-position: 16px 0px, 0px 100%, 100% 16px, 0px 0px, 0px 0px;
+	}
+}
