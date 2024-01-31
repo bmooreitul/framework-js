@@ -309,6 +309,7 @@ function init_fill_height(trigger = true){
 
 		event.preventDefault();
 		event.stopPropagation();
+		$(this).removeClass('dragging-over');
 
 		var callbackName    = typeof($(this).attr('data-callback')) !== 'undefined' ? $(this).attr('data-callback') : null;
 		var multiFile       = typeof($(this).attr('data-multifile')) !== 'undefined' && $(this).attr('data-multifile') == 'true' ? true  : false;
