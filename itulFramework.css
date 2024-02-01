@@ -50,7 +50,9 @@
 	}
 }
 
-
+.drag-and-drop-file-upload {
+    padding:18px;
+}
 
 .drag-and-drop-file-upload.dragging-over {
 	background-color: #d9f7ec;
@@ -65,7 +67,7 @@
 	background-size: 16px 3px, 16px 3px, 3px 16px, 3px 16px, 100% 100%;
 	animation: draganddrop-border-animation .3s linear infinite;
 	border: none;
-	/*padding: 18px;*/
+	padding: 18px;
 }
 
 @keyframes draganddrop-border-animation {
