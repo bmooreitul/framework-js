@@ -376,7 +376,7 @@ function init_fill_height(trigger = true){
 			});
 		*/
 
-		slickDropzone: function(options){
+		slickDropzone: function(settings){
 
 			var options = $.extend({
 				multiple 			: false,
@@ -386,7 +386,12 @@ function init_fill_height(trigger = true){
 					enabled 		: true,
 					onFinishHide 	: true,
 				},
-			}, options);
+			}, settings);
+
+			if(typeof(options.displayProgress.onFinishHide) == 'undefined') options.displayProgress.onFinishHide = true;
+			if(typeof(options.displayProgress.enabled) == 'undefined') options.displayProgress.enabled = true;
+
+			console.log(options);
 
 
 			var inlineElement 	= null;
