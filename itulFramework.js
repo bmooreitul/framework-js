@@ -322,10 +322,7 @@ function init_fill_height(trigger = true){
 			var inlineElement 			= ($(this).attr('data-display-progress') == 'true' || $(this).attr('data-display-progress') == 'modal') ? null : $($(this).attr('data-display-progress'));
 			var onFinishHideProgress 	= typeof($(this).attr('data-hide-progress-on-finish')) !== 'undefined' && $(this).attr('data-hide-progress-on-finish') == 'false' ? false : true;
 		}
-		
-		//renderFileUploadProgress(event, callbackName, multiFile);
-		console.log()
-		console.log(inlineElement);
+
 		if(displayProgress){
 			renderFileUploadProgressSynchronous(event, {
 				callback 		: callbackName,
@@ -384,21 +381,22 @@ function init_fill_height(trigger = true){
 			var options = $.extend({
 				multiple 			: false,
 				onSuccess 			: null,
-				onError 			: null,
 				displayProgress 	: {
 					enabled 		: true,
 					onFinishHide 	: true,
 				},
 			}, settings);
 
+			var that = this;
+
 			if(typeof(options.displayProgress.onFinishHide) == 'undefined') options.displayProgress.onFinishHide = true;
 			if(typeof(options.displayProgress.enabled) == 'undefined') options.displayProgress.enabled = true;
 
+			$(this).trigger('it.sdz.initializing', [{options: options}]);			
 
-			var inlineElement 	= null;
-			var functionName 	= 'slick_dropzone_callback_'+makeUniqueId();
-
-			window[functionName] = function(data, ele){ $(ele).trigger('it.sd.success', [data]);};
+			var inlineElement 		= null;
+			var functionName 		= 'slick_dropzone_callback_'+makeUniqueId();
+			window[functionName] 	= function(data, ele){ $(ele).trigger('it.sdz.success', [data]);};
 
 			if(options.displayProgress.enabled == 'inline'){
 				inlineElement 					= $('<div id="slick-dropzone-progress-wrapper-'+makeUniqueId()+'"></div>');
@@ -415,12 +413,24 @@ function init_fill_height(trigger = true){
 			$(wrapper).append($(textWrapper));
 			if(inlineElement != null) $(wrapper).prepend($(inlineElement));
 
+			options.inlineElement 	= inlineElement;
+			options.callbackName 	= functionName;
+			options.callback 		= window[functionName];
+			options.wrapper 		= $(wrapper);
+
 			if(typeof(options.onSuccess) == 'function'){
-				$(inputElement).on('it.sd.success', options.onSuccess);
-				$(wrapper).on('it.sd.success', options.onSuccess);
+				$(inputElement).on('it.sdz.success', options.onSuccess);
+				$(wrapper).on('it.sdz.success', options.onSuccess);
 			}
 
 			$(this).append($(wrapper));
+			
+			setTimeout(function(){
+				$(that).trigger('it.sdz.initialized', [{options: options}]);
+			}, 1);
+			
+
+			return $(this);
 		}
 	});
 
