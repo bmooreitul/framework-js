@@ -313,19 +313,113 @@ function init_fill_height(trigger = true){
 
 		var callbackName    = typeof($(this).attr('data-callback')) !== 'undefined' ? $(this).attr('data-callback') : null;
 		var multiFile       = typeof($(this).attr('data-multifile')) !== 'undefined' && $(this).attr('data-multifile') == 'true' ? true  : false;
+		var displayProgress = typeof($(this).attr('data-display-progress') !== 'undefined') && $(this).attr('data-display-progress') != 'false' ? true : false;
+		
+		if(displayProgress){
+			var inlineElement 			= ($(this).attr('data-display-progress') == 'true' || $(this).attr('data-display-progress') == 'modal') ? null : $($(this).attr('data-display-progress'));
+			var onFinishHideProgress 	= typeof($(this).attr('data-hide-progress-on-finish')) !== 'undefined' && $(this).attr('data-hide-progress-on-finish') == 'false' ? false : true;
+		}
+		
 		//renderFileUploadProgress(event, callbackName, multiFile);
-		//renderFileUploadProgressSynchronous(event, callbackName, multiFile);
-		var ele = $(this);
+		console.log()
+		console.log(inlineElement);
+		if(displayProgress){
+			renderFileUploadProgressSynchronous(event, {
+				callback 		: callbackName,
+				multiFile 		: multiFile,
+				asModal 		: inlineElement != null ? false : true,
+				inlineElement 	: inlineElement,
+				onFinishHide 	: onFinishHideProgress
+			});
+		}
+		else{
+			var ele = $(this);
 
-		ajax_file_upload(event, $(this).data(), function(data){
-			if(typeof(window[callbackName]) == 'function'){
-				window[callbackName](data, ele);
-			}
-			else{
-				spinner('hide');
-			}
-		}, event.originalEvent.dataTransfer.files);
+			ajax_file_upload(event, $(this).data(), function(data){
+				if(typeof(window[callbackName]) == 'function'){
+					window[callbackName](data, ele);
+				}
+				else{
+					spinner('hide');
+				}
+			}, event.originalEvent.dataTransfer.files);
+		}
 
+	});
+
+	//SLICK DROPZONE FILE UPLOADS
+	$.fn.extend({
+
+		/*
+			//OPTIONS
+			multiple: (bool), DEFAULT(false), ALLOW MULTI FILE UPLOADS
+			onSuccess: (function) DEFAULT(null), A FUNCTION TO BE CALLED WHEN UPLOADS FINISHED
+			displayProgress: {
+				enabled: (bool|string|jquery Object), DEFAULT(true), IF SET TO "inline" THEN THE UPLOAD PROGRESS WILL DISPLAY INLINE INSTEAD OF IN A MODAL, IF SET TO A JQUERY OBJECT OR A SELECTOR THE PROGRESS WILL RENDER IN THAT ELEMENT
+				onFinishHide: (bool), DEFAULT(true), IF FALSE THEN THE PROGRESS BARS WILL NOT DISAPPEAR WHEN FINISHED
+			}
+
+			//EXAMPLE 
+			$('#dropzone-example').slickDropzone({
+				displayProgress: {
+					enabled 		: 'inline',
+					onFinishHide 	: true,
+				},
+				onSuccess: function(e, data){
+					if(typeof(data.files) != 'undefined' && data.files.length > 0){
+						for(var x in data.files){
+							var file = data.files[x];
+							//...do something with the file here
+						}
+					}
+				}
+			});
+		*/
+
+		slickDropzone: function(options){
+
+			var options = $.extend({
+				multiple 			: false,
+				onSuccess 			: null,
+				onError 			: null,
+				displayProgress 	: {
+					enabled 		: true,
+					onFinishHide 	: true,
+				},
+			}, options);
+
+
+			var inlineElement 	= null;
+			var uniqueId 		= Date.now().toString(36)+Math.random().toString(36).substring(2, 12).padStart(12, 0);
+			var functionName 	= 'slick_dropzone_callback_'+uniqueId;
+
+			window[functionName] = function(data, ele){
+				$(ele).trigger('it.sd.success', [data]);
+			};
+
+			if(options.displayProgress.enabled == 'inline'){
+				var uniqueId2 					= Date.now().toString(36)+Math.random().toString(36).substring(2,12).padStart(12, 0);
+				inlineElement 					= $('<div id="slick-dropzone-progress-wrapper-'+uniqueId2+'"></div>');
+				options.displayProgress.enabled = '#slick-dropzone-progress-wrapper-'+uniqueId2;				
+			}
+
+			var textWrapper 	= $('<p>Drag and drop a file here <br><br> or <br><br></p>');
+			var label 			= $('<label class="btn btn-primary">Browse for a file</label>');
+			var inputElement 	= $('<input type="file" name="file" class="ajax_file_upload d-none" data-callback="'+functionName+'">');
+			var wrapper 		= $('<div class="text-center drag-and-drop-file-upload" data-display-progress="'+(options.displayProgress.enabled === true ? 'true' : (options.displayProgress.enabled !== false ? options.displayProgress.enabled : 'false'))+'" data-hide-progress-on-finish="'+(options.displayProgress.onFinishHide ? 'true' : 'false')+'" data-callback="'+functionName+'"></div>');
+
+			$(label).append($(inputElement));
+			$(textWrapper).append($(label));
+			$(wrapper).append($(textWrapper));
+			if(inlineElement != null) $(wrapper).prepend($(inlineElement));
+
+			if(typeof(options.onSuccess) == 'function'){
+				$(inputElement).on('it.sd.success', options.onSuccess);
+				$(wrapper).on('it.sd.success', options.onSuccess);
+			}
+
+			$(this).append($(wrapper));
+		}
 	});
 
 	//--------------------------------------- END DRAG AND DROP FILE UPLOADS -------------------------//
@@ -408,11 +502,345 @@ function init_fill_height(trigger = true){
 
 
 
+	//--------------------------------------- BEGIN AJAX FILE UPLOAD PROGRESS -------------------------//
+	function renderFileUploadProgressSynchronous(event, options){
+
+		var options = $.extend({
+			callback 		: null,
+			multiFile 		: false,
+			asModal 		: true,
+			inlineElement 	: null,
+			onFinishHide 	: true,
+		}, options);
+
+		var inlineElement = null;
+
+		if(options.inlineElement != null){
+			inlineElement 	= $(options.inlineElement);
+			options.asModal = false;
+		}
+
+		var callback 	= options.callback;
+		var multiFile 	= options.multiFile;
+
+	    //INIT DEFAULTS
+	    var modal;
+	    var parts;
+	    var totalParts          = 0;
+	    var currentPartPercent  = 0;
+	    var callingElement      = $(event.currentTarget);	    
+
+	     //TRY TO FIND THE FILE OBJECTS
+	    try{
+	        var files = event.originalEvent.dataTransfer.files;
+	    }
+
+	    //NO FILES WERE FOUND SO DELETE THE files OBJECT
+	    catch{
+	        if(typeof(files) !== 'undefined') delete files;
+	    }
+
+	    //REMOVE OLD FORM WRAPPERS
+	    if($('.file-upload-progress-wrapper').length) $('.file-upload-progress-wrapper').remove();
+
+	    var uploadUrl = typeof($(callingElement).attr('data-uploadurl')) == 'undefined' ? itulOptions.files.uploadUrl : $(callingElement).attr('data-uploadurl');
+
+	    //BUILD THE FORM WRAPPER
+	    var form_wrapper = $(
+	        '<div class="file-upload-progress-wrapper">'+
+	            '<form style="display:none" action="'+uploadUrl+'" method="post" enctype="multipart/form-data">'+
+	                '<input type="file" name="'+(multiFile ? 'file[]' : 'file')+'" '+(multiFile ? 'multiple' : '')+'>'+
+	            '</form>'+
+	        '</div>'
+	    );
+
+	    //DEFINE THE FORM
+	    var form = $(form_wrapper).find('form');   
+
+	    //NO FILES WERE DEFINED BY THE EVENT
+	    if(typeof(files) == 'undefined'){
+	        $(form).find('input[type="file"]').trigger('click');
+	    }
+
+	    //FILES WERE DEFINED BY THE EVENT
+	    else{
+
+	        //SET THE FILES ON THE FORM FROM THE EVENT
+	        $(form).find('input[type="file"]').prop('files', files);
+
+	        //console.log(files);
+
+	        //WAIT 1 MILLISECOND BEFORE TRIGGERING THE CHANGE EVENT (OTHERWRISE JAVASCRIPT WORKS TOO FAST)
+	        setTimeout(function(){ $(form).find('input[type="file"]').trigger('change'); }, 1);
+	    }
+
+	    //LISTEN FOR THE FILE INPUT TO CHANGE
+	    $(form).find('input[type="file"]').on('change', function(){
+
+	        //INITIALIZE THE PARTS ARRAY
+	        parts = [];
+
+	        //GENERATE A MODAL
+	        //modal = generate_modal({content: '', title: 'Uploading Files', dismissable: false});
+	        if(options.asModal){
+	        	modal = generateBootstrapModal({bodyContent: '<div class="container-fluid"></div>', title: 'Uploading Files', dismissable: false});
+	        	inlineElement = $(modal).find('.modal-body > .container-fluid');
+	        }
+
+	        //LOOP THROUGH THE FILES
+	        for(var x = 0; x < $(this)[0].files.length; x++){
+
+	            //GET THE FILES
+	            var file    = $(this)[0].files[x];	            
+
+	            //BUILD THE ELEMENTS
+	            var w = $('<div class="upload-wrapper"></div>');
+	            var m = $('<div class="file-folder-helper-upload-message">'+file.name+'</div>');
+	            var p = $('<div class="progress"></div>');
+	            
+	            var b = $('<div class="progress-bar progress-bar-striped progress-bar-animated active" role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100">0%</div>')
+	                .on('finished.UploadProgress', function(e){
+	                    var that = $(this);
+	                    setTimeout(function(){ $(that).addClass('progress-bar-success').removeClass('active') }, 600);
+	                })
+	                .on('triggerSpinner.UploadProgress', function(e){
+	                    var that = $(this);
+	                    setTimeout(function(){ spinner() }, 500);
+	                });
+
+	            //ADD THE PART
+	            parts.push({
+	                wrap        : w,
+	                message     : m,
+	                progress    : p,
+	                bar         : b,
+	                size        : file.size,
+	                file        : file,
+	                name 		: file.name
+	            });
+
+	            //INCREMENT THE TOTAL PARTS BY THE FILE SIZE
+	            totalParts += file.size;
+
+	            //BUILD THE DISPLAY ELEMENTS
+	            $(p).append(b);
+	           
+	            $(w).append(m);
+	            $(w).append(p);
+
+	            //APPEND THE ELEMENTS TO THE MODAL
+	            //$(modal).find('.modal-body > .container-fluid').append(w);
+	            $(inlineElement).append(w);
+
+	            //HIDE THE SPINNER
+	            spinner('hide');
+	        }
+
+	        var results = {files: [], error: []};
+	        var calls = [];
+	        var current = 0;
+	        var uploaded = 0;
+
+	        var doUploadProgressAjax = function(){
+
+	            if(current < parts.length){
+
+	            	if(current === 0){
+	            		$(callingElement).trigger('it.uploadProgress.starting', [{
+	            			uploaded: 0,
+	            			total: parts.length,
+	            		}]);       
+	            	}
+
+	                var part = parts[current];
+	                
+	                //ADD THE FILES
+	                var uploadFormData = new FormData();
+	                uploadFormData.append(0, part.file);    
+
+	                $(callingElement).trigger('it.uploadProgress.file.starting', [{
+            			uploaded: results.files.length,
+            			file: {
+            				name 		: part.name,
+            				size 		: part.size,
+            				progress  	: part.progress,
+            			},
+            			total: parts.length,
+            		}]);      
+
+	                //SEND IT OFF
+	                $.ajax({
+	                    xhr: function() {
+	                        var xhr = new window.XMLHttpRequest();
+	                        xhr.upload.addEventListener("progress", function(evt) {
+	                            if (evt.lengthComputable) {
+	                                var percentComplete = (evt.loaded / evt.total) * 100;
+	                                //Do something with upload progress here
+	                                $(part.bar).width(percentComplete+'%');
+	                                $(part.bar).html(percentComplete+'%');
+	                            }
+	                       }, false);
+	                       return xhr;
+	                    },
+	                    url         : uploadUrl,
+	                    type        : 'POST',
+	                    data        : uploadFormData,
+	                    cache       : false,
+	                    dataType    : 'json',
+	                    processData : false,
+	                    contentType : false,
+	                    complete: function(xhr){
+	                        try{
+	                            var xhrRes = $.parseJSON(xhr.responseText);
+	                            if(xhrRes.files.length){
+	                            	for(var x in xhrRes.files) results.files.push(xhrRes.files[x]);
+	                            }
+	                            if(xhrRes.error.length){
+	                            	for(var x in xhrRes.error) results.error.push(xhrRes.error[x]);
+	                            }
+	                        }
+	                        catch{
+	                            results.error.push(xhr);
+	                        }
+
+	                        $(callingElement).trigger('it.uploadProgress.file.finished', [{
+		            			uploaded 		: results.files.length,
+		            			file 			: {
+		            				name 		: part.name,
+		            				size 		: part.size,
+		            				progress  	: part.progress,
+		            			},
+		            			total: parts.length,
+		            		}]);     
+
+	                        //results.push(res);
+
+	                        current++;
+	                        doUploadProgressAjax();
+	                    }
+	                });
+	            }
+	            else{
+	                
+	                var res = results;	      
+
+	                $(callingElement).trigger('it.uploadProgress.finished', [{
+	                	uploaded 	: results.files.length,
+            			total 		: parts.length,
+            			results 	: results
+	                }]);       
+
+	                if(typeof(window[callback]) == 'function'){
+	                    window[callback](results, $(callingElement));
+	                }
+	                else if(typeof(callback) == 'function'){
+	                    callback(results, $(callingElement));
+	                }
+	                //HANDLE HIDE ON FINISH            
+	                spinner('hide');
+	                if(options.onFinishHide){
+                		if(options.asModal) $(modal).modal('hide');
+                		else if(inlineElement != null) $(inlineElement).empty();
+	                }
+	            }
+	        }
+
+	        //CALL THE MODAL IF NEEDED
+	        if(options.asModal) $(modal).on('shown.bs.modal', function(){  doUploadProgressAjax(); });
+
+	        //NOT IN A MODAL SO JUST RUN THE AJAX
+	        else doUploadProgressAjax();     
+	    });
+	}
+
+	//--------------------------------------- END AJAX FILE UPLOAD PROGRESS -------------------------//
+
+
+
 
 
 	//--------------------------------------- BEGIN AJAX MODAL LISTENING AND FUNCTIONS -------------------------//
 
 	var modalTrigger;
+
+	function generateBootstrapModal(options){
+
+		var options = $.extend({
+			bodyContent 	: '',
+			dialogClass 	: '',
+			contentClass  	: '',
+			title 			: '',
+			size  			: 'lg',
+			dismissable 	: true,
+			modalOptions 	: {
+				backdrop 	: true,
+				keyboard 	: false,
+				show 		: true, 
+			},	
+		}, options);
+
+		//FORCE MODAL OPTIONS WHEN DISMISSABLE
+		options.modalOptions.backdrop = options.dismissable ? options.modalOptions.backdrop : 'static';
+		options.modalOptions.keyboard = options.dismissable ? options.modalOptions.keyboard : false;
+
+		//FORCE MODAL SIZE TO STANDARD FORMAT
+		options.size = 'modal-'+(options.size.replace('modal-', ''));
+
+		//DEFINE THE MODAL HEADER
+		var modalHeader 	=
+			'<div class="modal-header">' +
+				'<h5 class="modal-title d-inline-block">' + options.title + '</h5>'+
+				(options.dismissable ? '<button type="button" data-bs-dismiss="modal" aria-label="Close" class="close"><span aria-hidden="true">×</span></button>' : '')+
+			'</div>';
+
+		//SET THE MODAL HEADER TO EMPTY IF NO TITLE AND NOT DISMISSABLE
+		if(options.title == '' && !options.dismissable) modalHeader = '';
+
+		var m = $(
+			'<div class="modal fade" id="ajax-modal" tabindex="-1" role="dialog" aria-hidden="true">'+
+				'<div class="modal-dialog '+options.dialogClass+' '+options.size+'" role="document">'+
+					'<div class="modal-content' + options.contentClass + '">'+
+						modalHeader+
+						'<div class="modal-body">'+
+							options.bodyContent+
+						'</div>'+
+					'</div>'+
+				'</div>'+
+			'</div>'
+		);
+
+		//PLACE THE FOOTER CORRECTLY
+		if($(m).find('.modal-body .modal-footer').length) $(m).find('.modal-body .modal-footer').appendTo($(m).find('.modal-content'));
+
+		$(m).on('hidden.bs.modal', function(){
+			$(this).remove();
+		}).on('hide.bs.modal', function(){
+			setTimeout(function(){
+				try{
+					tinymce.remove('#ajax-modal textarea');
+				}
+				catch{
+					//SILENT
+				}
+				
+			}, 300);
+		});
+
+		//ADD THE FOOTER
+		$('body').append($(m));
+		$(m).modal(options.modalOptions);
+		if(options.modalOptions.show === true) $(m).modal('show');
+
+		/*
+		$(m).on('shown.bs.modal', function(){
+			$(document).trigger('itul.livewire.rescan');
+		});
+		*/
+
+		$(modalTrigger).trigger('it.modal.created', [$(m)]);
+
+		return $(m);
+	}
 
 	function triggerAjaxModal(url, title, d, closeCallback){
 		var ele = $('<a class="modal-link" method="get" title="'+(title != undefined ? title : '')+'" href="'+url+'"></a>');
@@ -482,7 +910,8 @@ function init_fill_height(trigger = true){
 			$(url).modal('show');
 			return;
 		}
-		
+
+		/*		
 		var modal_header =
 			'<div class="modal-header">' +
 				'<h5 class="modal-title d-inline-block">' + title + '</h5>'+
@@ -491,6 +920,7 @@ function init_fill_height(trigger = true){
 
 
 		if(title == '' && !dismissable) modal_header = '';
+		*/
 
 		var modal_options = {
 			backdrop: dismissable ? true : 'static',
@@ -525,8 +955,19 @@ function init_fill_height(trigger = true){
 			data: data,
 			success: function(data){
 
+				var m = generateBootstrapModal({
+					bodyContent 	: data,
+					dialogClass 	: addn_dialog_class,
+					contentClass 	: addn_class,
+					title 			: title,
+					size 			: size,
+					dismissable 	: dismissable,
+					modalOptions 	: modal_options,
+				});
+
 				//var footer = $(data).find('.modal-footer').length;
 
+				/*
 				var m = $(
 					'<div class="modal fade" id="ajax-modal" tabindex="-1" role="dialog" aria-hidden="true">'+
 						'<div class="modal-dialog '+addn_dialog_class+' '+size+'" role="document">'+
@@ -541,7 +982,7 @@ function init_fill_height(trigger = true){
 				);
 
 				//PLACE THE FOOTER CORRECTLY
-				if($(m).find('.modal-footer').length) $(m).find('.modal-footer').appendTo($(m).find('.modal-content'));
+				if($(m).find('.modal-body .modal-footer').length) $(m).find('.modal-body .modal-footer').appendTo($(m).find('.modal-content'));
 
 				$(m).on('hidden.bs.modal', function(){
 					$(this).remove();
@@ -562,13 +1003,13 @@ function init_fill_height(trigger = true){
 				$(m).modal(modal_options);
 				if(modal_options.show === true) $(m).modal('show');
 
-				/*
-				$(m).on('shown.bs.modal', function(){
-					$(document).trigger('itul.livewire.rescan');
-				});
-				*/
+				
+				//$(m).on('shown.bs.modal', function(){
+				//	$(document).trigger('itul.livewire.rescan');
+				//});
 
 				$(modalTrigger).trigger('it.modal.created', [$(m)]);
+				*/
 			}
 		})
 	});
