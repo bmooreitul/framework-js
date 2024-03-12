@@ -4,7 +4,8 @@ let itulOptions = {
 		uploadUrl: '/files/upload',
 	},
 	spinner: false,
-	useRequireVisible: false
+	useRequireVisible: false,
+	ajaxFormValidationReporting: false,
 }
 
 $.ajaxSetup({
@@ -41,6 +42,10 @@ function spinner(show){
 
 $(document).off('click.ShowLoaderLink').on('click.ShowLoaderLink', '.show-loader', function(){
 	spinner();
+	$(':input').off('invalid.FormValidation.Failed').on('invalid.FormValidation.Failed', function(e){
+		console.log(e);
+		spinner('hide');
+	});
 });
 
 //--------------------------------------- END SPINNER LISTENERS AND FUNCTIONS -------------------------//
@@ -142,8 +147,83 @@ function init_fill_height(trigger = true){
 
 	//--------------------------------------- BEGIN AJAX FORM LISTENERS AND FUNCTIONS -------------------------//
 
+	//WAIT FOR PAGE TO BE READY
+	$(function(){
+
+		//CHECK IF VALIDATION REPORTING IS ENABLED
+		if(typeof(itulOptions.ajaxFormValidationReporting) !== 'undefined' && itulOptions.ajaxFormValidationReporting == true){
+
+			//LISTEN FOR MOUSEOVER			
+			$(document).off('mouseenter.AjaxForm.Validation.Init').on('mouseenter.AjaxForm.Validation.Init', 'form.ajax-form:not(.needs-validation-reporting)', function(e){
+				if(typeof($(this).attr('novalidate')) == 'undefined'){
+					$(this).attr('novalidate', 'novalidate');
+					$(this).addClass('needs-validation-reporting');
+					$(this).addClass('needs-validation');
+				}
+			});
+
+			//LISTEN FOR FOCUS
+			$(document).off('focus.AjaxForm.Validation.Field.Init').on('focus.AjaxForm.Validation.Field.Init', 'form.ajax-form:not(.needs-validation-reporting) :input', function(e){
+				var form = $(this).closest('form');
+				if(typeof($(form).attr('novalidate')) == 'undefined'){
+					$(form).attr('novalidate', 'novalidate');
+					$(form).addClass('needs-validation-reporting');
+					$(form).addClass('needs-validation');
+				}
+			})
+
+			//LISTEN FOR SUBMIT
+			$(document).off('submit.AjaxForm.Validation.Run').on('submit.AjaxForm.Validation.Run', 'form.ajax-form.needs-validation-reporting:not(.validation-reporting-passed)', function(e){
+				
+				//PREVENT BUBBLING
+				e.preventDefault();
+				e.stopPropagation();
+
+				//PASSED HTML VALIDATION
+				if(this.checkValidity() === true){
+
+					//SETUP CLASSES AND SUBMIT
+					$(this).addClass('validation-reporting-passed');
+					$(this).find(':input').removeClass('is-invalid').removeClass('is-valid');
+					$(this).trigger('submit');
+					$(this).removeClass('validation-reporting-passed');
+				}
+
+				//FAILED HTML VALIDATION
+				else{
+
+					//LOOP THROUGH THE INPUTS
+					$(this).find(':input').each(function(k, v){
+
+						//LISTEN FOR INVALID
+						$(v).off('invalid.AjaxForm.Validation.Fail').on('invalid.AjaxForm.Validation.Fail', function(e){
+							$(this).removeClass('is-valid').addClass('is-invalid');
+						});
+
+						//LISTEN FOR VALID
+						$(v).off('valid.AjaxForm.Validation.Pass').on('valid.AjaxForm.Validation.Pass', function(e){
+							$(this).addClass('is-valid').removeClass('is-invalid');
+						});
+					});
+
+					//SHOW THE HTML VALIDATION ERRORS
+					this.reportValidity();
+
+					//HIDE THE SPINNER
+					spinner('hide');
+				}
+			});
+		}
+	});
+	
+
+	//HANDLE AJAX FORM SUBMIT
 	$(document).off('submit.ajaxForm').on('submit.ajaxForm', '.ajax-form', function(e){
 		e.preventDefault();
+
+		if(typeof(itulOptions.ajaxFormValidationReporting) !== 'undefined' && itulOptions.ajaxFormValidationReporting == true){
+			if($(this).hasClass('needs-validation-reporting') && !$(this).hasClass('validation-reporting-passed')) return;
+		}
 
 		if($(this).hasClass('ajax-form-submitting')) return;
 
