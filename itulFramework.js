@@ -1216,38 +1216,46 @@ function init_fill_height(trigger = true){
 	});
 	*/
 
-	if(typeof(itulOptions.useRequireVisible) != 'undefined' && itulOptions.useRequireVisible == true){
+	//WAIT FOR THE PAGE TO LOAD
+	$(function(){
 
-		//DEFINE THE MUTATION AND CALLBACK
-		(new (window.MutationObserver || window.WebKitMutationObserver)(function(mutations, visibleObserver){
+		//CHECK IF WE WANT TO LISTEN FOR USE REQUIRED
+		if(typeof(itulOptions.useRequireVisible) != 'undefined' && itulOptions.useRequireVisible == true){
 
-			//DEFINE THE TIME IF NEEDED
-			if(typeof(window['requiredVisibleTimer']) == 'undefined') window['requiredVisibleTimer'] = null;
-			
-			//CLEAR THE EXISTING TIMER
-		    clearTimeout(window['requiredVisibleTimer']);
+			//DEFINE THE MUTATION AND CALLBACK
+			(new (window.MutationObserver || window.WebKitMutationObserver)(function(mutations, visibleObserver){
 
-		    //START A NEW TIMER
-		    window['requiredVisibleTimer'] = setTimeout(function(){
+				//DEFINE THE TIME IF NEEDED
+				if(typeof(window['requiredVisibleTimer']) == 'undefined') window['requiredVisibleTimer'] = null;
+				
+				//CLEAR THE EXISTING TIMER
+			    clearTimeout(window['requiredVisibleTimer']);
 
-		    	//DISCONNECT THE EXISTING OBSERVER
-		    	visibleObserver.disconnect();
+			    //START A NEW TIMER
+			    window['requiredVisibleTimer'] = setTimeout(function(){
 
-		    	//REMOVE REQUIRED FROM REQUIRE VISIBLE FIELDS
-		    	$(':input.require-visible').not(':visible').removeAttr('required');
+					//CHECK IF THERE ARE FIELDS TO MODIFY
+					if($(':input.require-visible').length){
+						
+						//DISCONNECT THE EXISTING OBSERVER
+				    	visibleObserver.disconnect();
+	
+				    	//REMOVE REQUIRED FROM REQUIRE VISIBLE FIELDS
+				    	$(':input.require-visible').not(':visible').removeAttr('required');
+	
+				    	//ADD REQUIRED TO VISIBLE REQUIRE VISIBLE FIELDS
+				    	$(':input.require-visible:visible').attr('required', true);
+	
+				    	//START OBSERVING AGAIN
+				    	visibleObserver.observe($('body')[0], {subtree: true, attributes: true, childList: true});
+					}
 
-		    	//ADD REQUIRED TO VISIBLE REQUIRE VISIBLE FIELDS
-		    	$(':input.require-visible:visible').attr('required', true);
+			    //WAIT 500 MILLISECONDS BEFORE PROCESSING THE VISIBLE OBSERVER
+			    }, 500);				
 
-		    	//START OBSERVING AGAIN
-		    	visibleObserver.observe(document, {subtree: true, attributes: true});
-
-		    //WAIT 500 MILLISECONDS BEFORE PROCESSING THE VISIBLE OBSERVER
-		    }, 500);
-
-		})).observe(document, {subtree: true, attributes: true});
-	}
-
+			})).observe($('body')[0], {subtree: true, attributes: true, childList: true});
+		}
+	});
 //--------------------------------------- END REQUIRE VISIBLE -------------------------//
 
 
