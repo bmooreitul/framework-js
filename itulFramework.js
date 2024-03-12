@@ -4,6 +4,7 @@ let itulOptions = {
 		uploadUrl: '/files/upload',
 	},
 	spinner: false,
+	useRequireVisible: false
 }
 
 $.ajaxSetup({
@@ -1190,6 +1191,64 @@ function init_fill_height(trigger = true){
 	}
 
 //--------------------------------------- END NESTED TABLES CONFORM SIZES -------------------------//
+
+
+//--------------------------------------- REQUIRE VISIBLE -------------------------//
+
+	/*
+	$.RequireVisible = function(options){
+
+		$.fn.extend({
+			requireVisible: function(options){
+				$(this).find('.require-visible').removeAttr('required');
+				$(this).find('.require-visible:visible').attr('required', 'required')
+			}
+		});
+
+		$('.require-visible').closest('form').requireVisible();
+	};
+
+	//WAIT FOR PAGE TO LOAD
+	$(function(){
+
+		//TRIGGER REQUIRE VISIBLE
+		$.RequireVisible();
+	});
+	*/
+
+	if(typeof(itulOptions.useRequireVisible) != 'undefined' && itulOptions.useRequireVisible == true){
+
+		//DEFINE THE MUTATION AND CALLBACK
+		(new (window.MutationObserver || window.WebKitMutationObserver)(function(mutations, visibleObserver){
+
+			//DEFINE THE TIME IF NEEDED
+			if(typeof(window['requiredVisibleTimer']) == 'undefined') window['requiredVisibleTimer'] = null;
+			
+			//CLEAR THE EXISTING TIMER
+		    clearTimeout(window['requiredVisibleTimer']);
+
+		    //START A NEW TIMER
+		    window['requiredVisibleTimer'] = setTimeout(function(){
+
+		    	//DISCONNECT THE EXISTING OBSERVER
+		    	visibleObserver.disconnect();
+
+		    	//REMOVE REQUIRED FROM REQUIRE VISIBLE FIELDS
+		    	$(':input.require-visible').not(':visible').removeAttr('required');
+
+		    	//ADD REQUIRED TO VISIBLE REQUIRE VISIBLE FIELDS
+		    	$(':input.require-visible:visible').attr('required', true);
+
+		    	//START OBSERVING AGAIN
+		    	visibleObserver.observe(document, {subtree: true, attributes: true});
+
+		    //WAIT 500 MILLISECONDS BEFORE PROCESSING THE VISIBLE OBSERVER
+		    }, 500);
+
+		})).observe(document, {subtree: true, attributes: true});
+	}
+
+//--------------------------------------- END REQUIRE VISIBLE -------------------------//
 
 
 //--------------------------------------- INPUT MASKING CUSTOM LISTENERS AND FUNCTIONS -------------------------//
