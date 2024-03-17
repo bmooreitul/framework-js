@@ -552,6 +552,7 @@ function init_fill_height(trigger = true){
 			var label 			= $('<label class="btn btn-link text-decoration-none">Browse files</label>');			
 			var inputElement 	= $('<input type="file"'+(options.multiple ? ' multiple ' : ' ')+'name="'+inputName+'" '+(options.accept != null ? 'accept="'+options.accept+'"' : '')+' class="ajax_file_upload d-none" data-callback="'+functionName+'">');
 			var wrapper 		= $('<div class="text-center drag-and-drop-file-upload border" data-multifile="'+(options.multiple ? 'true' : 'false')+'" data-display-progress="'+(options.displayProgress.enabled === true ? 'true' : (options.displayProgress.enabled !== false ? options.displayProgress.enabled : 'false'))+'" data-hide-progress-on-finish="'+(options.displayProgress.onFinishHide ? 'true' : 'false')+'" data-callback="'+functionName+'"></div>');
+			$(wrapper).hide();
 
 			if(options.multiple) $(inputElement).attr('data-multifile', 'true');
 
@@ -578,6 +579,9 @@ function init_fill_height(trigger = true){
 			setTimeout(function(){
 				if(options.hide){
 					slickDropzoneInstance.hide();
+				}
+				else{
+					slickDropzoneInstance.show();
 				}
 				$(that).trigger('it.sdz.initialized', [{options: options}]);
 			}, 1);
