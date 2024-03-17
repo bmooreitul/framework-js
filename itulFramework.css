@@ -52,6 +52,7 @@
 
 .drag-and-drop-file-upload {
     padding:18px;
+	background-color:#F5F5F5;
 }
 
 .drag-and-drop-file-upload.dragging-over {
