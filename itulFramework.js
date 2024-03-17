@@ -363,7 +363,7 @@ function init_fill_height(trigger = true){
 
 
 
-	//--------------------------------------- BEGIN DRAG AND DROP FILE UPLOADS -------------------------//
+	//--------------------------------------- BEGIN DRAG AND DROP FILE UPLOADS -------------------------//	
 
 	$("html").off('dragover.dragFile.html.DragAndDropFileUpload').on('dragover.dragFile.html.DragAndDropFileUpload', function(event) {
 		event.preventDefault();
@@ -380,12 +380,14 @@ function init_fill_height(trigger = true){
 	$(document).off('dragover.dragFile.DragAndDropFileUpload').on('dragover.dragFile.DragAndDropFileUpload', '.drag-and-drop-file-upload', function(event) {
 		event.preventDefault();
 		event.stopPropagation();
+		$(this).trigger('it.sdz.DragOver');
 		$(this).addClass('dragging-over');
 	});
 
 	$(document).off('dragleave.dragLeaveFile.DragAndDropFileUpload').on('dragleave.dragLeaveFile.DragAndDropFileUpload', '.drag-and-drop-file-upload', function(event) {
 		event.preventDefault();
 		event.stopPropagation();
+		$(this).trigger('it.sdz.DragLeave');
 		$(this).removeClass('dragging-over');
 	});
 
@@ -393,6 +395,7 @@ function init_fill_height(trigger = true){
 
 		event.preventDefault();
 		event.stopPropagation();
+		$(this).trigger('it.sdz.dropping');
 		$(this).removeClass('dragging-over');
 
 		var callbackName    = typeof($(this).attr('data-callback')) !== 'undefined' ? $(this).attr('data-callback') : null;
@@ -428,6 +431,33 @@ function init_fill_height(trigger = true){
 
 	});
 
+	class SlickDropZone {
+
+		id = null;
+		options = {};
+		element = null;
+
+		constructor(id, options, element){
+			this.id = id;
+			this.options = options;
+			this.element = element;
+		}
+
+		show(){
+			$(this.options.wrapper).show();
+			this.options.hide = false;
+			return this;
+		}
+
+		hide(){
+			$(this.options.wrapper).hide();
+			this.options.hide = true;
+			return this;
+		}
+	}
+
+	var slickDropzoneInstances = {};
+
 	//SLICK DROPZONE FILE UPLOADS
 	$.fn.extend({
 
@@ -435,6 +465,8 @@ function init_fill_height(trigger = true){
 			//OPTIONS
 			multiple: (bool), DEFAULT(false), ALLOW MULTI FILE UPLOADS
 			onSuccess: (function) DEFAULT(null), A FUNCTION TO BE CALLED WHEN UPLOADS FINISHED
+			accept: (null|string) DEFAULT(null), A COMMA DELIMITED LIST OF ACCEPTABLE MIME TYPES. WILDCARD MIME TYPES ARE ALLOWED LIKE image/* OR audio/* ETC. MULTIPLE TYPES CAN BE SET BY LISTING WITH COMMAS. (image/*,audio/*,video/*)
+			hide: (bool) DEFAULT(false), TOGGLE FOR DISPLAYING THE UPLOAD WRAPPER AUTOMATICALLY WHEN INITIALIZED. A false VALUE WILL INITIALIZE THE WRAPPER BUT HIDE IT.
 			displayProgress: {
 				enabled: (bool|string|jquery Object), DEFAULT(true), IF SET TO "inline" THEN THE UPLOAD PROGRESS WILL DISPLAY INLINE INSTEAD OF IN A MODAL, IF SET TO A JQUERY OBJECT OR A SELECTOR THE PROGRESS WILL RENDER IN THAT ELEMENT
 				onFinishHide: (bool), DEFAULT(true), IF FALSE THEN THE PROGRESS BARS WILL NOT DISAPPEAR WHEN FINISHED
@@ -459,16 +491,46 @@ function init_fill_height(trigger = true){
 
 		slickDropzone: function(settings){
 
-			var options = $.extend({
+			var defaultOptions = {
 				multiple 			: false,
 				onSuccess 			: null,
+				accept 				: null,
+				hide 				: false,
 				displayProgress 	: {
 					enabled 		: true,
 					onFinishHide 	: true,
 				},
-			}, settings);
+			};
+
+			if(typeof($(this).attr('slick-dropzone-id')) == 'undefined'){
+				var slickDropzoneInstanceId = makeUniqueId();
+				var slickDropzoneInstance = new SlickDropZone(slickDropzoneInstanceId, {}, $(this));
+				slickDropzoneInstances[slickDropzoneInstanceId] = slickDropzoneInstance;
+			}
+			else{
+				var slickDropzoneInstanceId = $(this).attr('slick-dropzone-id');
+				var slickDropzoneInstance = slickDropzoneInstances[slickDropzoneInstanceId];
+				var defaultOptions = slickDropzoneInstance.options;
+			}
+
+			if(settings == 'hide'){
+				slickDropzoneInstance.hide();
+				return $(this);
+			}
+			else if(settings == 'show'){
+				slickDropzoneInstance.show();
+				return $(this);
+			}
+			else if(settings == 'instance'){
+				return slickDropzoneInstance;
+			}
+
+			var options = $.extend(defaultOptions, settings);
+
+			slickDropzoneInstance.options = options;
 
 			var that = this;
+			$(this).addClass('slick-dropzone-source')
 
 			if(typeof(options.displayProgress.onFinishHide) == 'undefined') options.displayProgress.onFinishHide = true;
 			if(typeof(options.displayProgress.enabled) == 'undefined') options.displayProgress.enabled = true;
@@ -484,13 +546,18 @@ function init_fill_height(trigger = true){
 				options.displayProgress.enabled = '#'+$(inlineElement).attr('id');				
 			}
 
-			var textWrapper 	= $('<p>Drag and drop a file here <br><br> or <br><br></p>');
-			var label 			= $('<label class="btn btn-primary">Browse for a file</label>');
-			var inputElement 	= $('<input type="file" name="file" class="ajax_file_upload d-none" data-callback="'+functionName+'">');
-			var wrapper 		= $('<div class="text-center drag-and-drop-file-upload" data-display-progress="'+(options.displayProgress.enabled === true ? 'true' : (options.displayProgress.enabled !== false ? options.displayProgress.enabled : 'false'))+'" data-hide-progress-on-finish="'+(options.displayProgress.onFinishHide ? 'true' : 'false')+'" data-callback="'+functionName+'"></div>');
+			var icon 			= $('<div class="mb-3"><i class="fas fa-file-upload" style="font-size:32px;"></i></div>');
+			var textWrapper 	= $('<p style="color:#717170" class="my-2">Drag & drop'+(options.multiple ? ' ' : ' a ')+'file'+(options.multiple ? 's' : '')+' here or<br></p>');
+			var inputName 		= options.multiple ? 'file[]' : 'file';
+			var label 			= $('<label class="btn btn-link text-decoration-none">Browse files</label>');			
+			var inputElement 	= $('<input type="file"'+(options.multiple ? ' multiple ' : ' ')+'name="'+inputName+'" '+(options.accept != null ? 'accept="'+options.accept+'"' : '')+' class="ajax_file_upload d-none" data-callback="'+functionName+'">');
+			var wrapper 		= $('<div class="text-center drag-and-drop-file-upload border" data-multifile="'+(options.multiple ? 'true' : 'false')+'" data-display-progress="'+(options.displayProgress.enabled === true ? 'true' : (options.displayProgress.enabled !== false ? options.displayProgress.enabled : 'false'))+'" data-hide-progress-on-finish="'+(options.displayProgress.onFinishHide ? 'true' : 'false')+'" data-callback="'+functionName+'"></div>');
+
+			if(options.multiple) $(inputElement).attr('data-multifile', 'true');
 
 			$(label).append($(inputElement));
 			$(textWrapper).append($(label));
+			$(textWrapper).prepend($(icon));
 			$(wrapper).append($(textWrapper));
 			if(inlineElement != null) $(wrapper).prepend($(inlineElement));
 
@@ -498,6 +565,8 @@ function init_fill_height(trigger = true){
 			options.callbackName 	= functionName;
 			options.callback 		= window[functionName];
 			options.wrapper 		= $(wrapper);
+
+			$(this).attr('slick-dropzone-id', slickDropzoneInstanceId);			
 
 			if(typeof(options.onSuccess) == 'function'){
 				$(inputElement).on('it.sdz.success', options.onSuccess);
@@ -507,6 +576,9 @@ function init_fill_height(trigger = true){
 			$(this).append($(wrapper));
 			
 			setTimeout(function(){
+				if(options.hide){
+					slickDropzoneInstance.hide();
+				}
 				$(that).trigger('it.sdz.initialized', [{options: options}]);
 			}, 1);
 			
