@@ -1375,6 +1375,12 @@ function init_fill_height(trigger = true){
 	//WAIT FOR THE PAGE TO LOAD
 	$(function(){
 
+		try {
+			iMaskWrap();
+		} catch{
+			//SILENT
+		}
+
 		//CHECK IF WE WANT TO LISTEN FOR USE REQUIRED
 		if(typeof(itulOptions.useRequireVisible) != 'undefined' && itulOptions.useRequireVisible == true){
 
@@ -1411,6 +1417,40 @@ function init_fill_height(trigger = true){
 
 			})).observe($('body')[0], {subtree: true, attributes: true, childList: true});
 		}
+
+		//DEFINE THE MUTATION AND CALLBACK
+		(new (window.MutationObserver || window.WebKitMutationObserver)(function(mutations, visibleObserver){
+
+			//DEFINE THE TIME IF NEEDED
+			if(typeof(window['iMaskTimer']) == 'undefined') window['iMaskTimer'] = null;
+			
+			//CLEAR THE EXISTING TIMER
+		    clearTimeout(window['iMaskTimer']);
+
+		    //START A NEW TIMER
+		    window['iMaskTimer'] = setTimeout(function(){
+
+				//CHECK IF THERE ARE FIELDS TO MODIFY
+				if($(':input.mask-input').length){
+					
+					//DISCONNECT THE EXISTING OBSERVER
+			    	visibleObserver.disconnect();
+
+			    	try {
+						iMaskWrap();
+					} catch{
+						//SILENT
+					}
+					
+
+			    	//START OBSERVING AGAIN
+			    	visibleObserver.observe($('body')[0], {subtree: true, attributes: true, childList: true});
+				}
+
+		    //WAIT 500 MILLISECONDS BEFORE PROCESSING THE VISIBLE OBSERVER
+		    }, 500);				
+
+		})).observe($('body')[0], {subtree: true, attributes: true, childList: true});
 	});
 //--------------------------------------- END REQUIRE VISIBLE -------------------------//
 
@@ -1426,6 +1466,26 @@ function init_fill_height(trigger = true){
 	*
 	*/
 
+	
+	function luhnCCCheck(number) {
+	  var digits = number.replace(/\D/g, '').split('').map(Number);
+	  let sum = 0;
+	  let isSecond = false;
+	  for (let i = digits.length - 1; i >= 0; i--) {
+	    let digit = digits[i];
+	    if (isSecond) {
+	      digit *= 2;
+	      if (digit > 9) {
+	        digit -= 9;
+	      }
+	    }
+	    sum += digit;
+	    isSecond = !isSecond;
+	  }
+	  return sum % 10 === 0;
+	}
+	
+
 	//SET THE INITIAL MASKING
 	$('input[type="text"].hover-unmask').attr('type', 'password');
 
@@ -1439,13 +1499,77 @@ function init_fill_height(trigger = true){
 	    $(this).attr('type', 'password');
 	});
 
+	//CURRENCY PARSER
+	const instances=new Map,GUID=Symbol("GUID");class Currency{static data(t){return instances.has(t[GUID])&&instances.get(t[GUID])}static position(t){const e=new Set(["1","2","3","4","5","6","7","8","9","0",..."٠١٢٣٤٥٦٧٨٩",..."۰۱۲۳۴۵۶۷۸۹"]);let n=0;for(let i=t.length-1;i>=0&&!e.has(t[i]);i--)n++;return String(t).length-n}static#t(t,e=2){const n=String(t),i=/-/.test(n)?"-":"",s=n.replaceAll(/[٠١٢٣٤٥٦٧٨٩]/g,(t=>t.codePointAt(0)-1632)).replaceAll(/[۰۱۲۳۴۵۶۷۸۹]/g,(t=>t.codePointAt(0)-1776)).replaceAll(/\D/g,"").replaceAll(/^0+/g,""),r=s.padStart(e+1,"0");return{minus:i,d:r.slice(-1*e),i:r.slice(0,r.length-e)}}static unmasking(t,e){const{minus:n,d:i,i:s}=Currency.#t(t,e);return Number(`${n}${s}.${i}`)}static masking(t,e={}){const{digits:n=2,empty:i=!1,locales:s="pt-BR",options:r={minimumFractionDigits:n,maximumFractionDigits:n},viaInput:a=!1}=e,u=new Set(["ISK","JPY"]).has(r?.currency),c=Number(t);!1===Number.isNaN(c)&&!1===a&&!1===u&&(t=new Intl.NumberFormat("en-US",{minimumFractionDigits:n,maximumFractionDigits:n}).format(c));let{minus:o,d:l,i:p}=Currency.#t(t,n);if(i&&"0"===p&&["00","000"].includes(l)&&""===o)return"";let h=`${o}${p}.${l}`;if(u&&a){h=`${o}${String(t).replaceAll(/\D/g,"")||0}`}return new Intl.NumberFormat(s,r).format(h)}constructor(t,e={}){if(this.opts={keyEvent:"input",triggerOnBlur:!1,init:!1,backspace:!1,maskOpts:{},...e},this.opts.maskOpts.viaInput=!0,t instanceof globalThis.HTMLInputElement==!1)throw new TypeError("The input should be a HTMLInputElement");if(Currency.data(t)instanceof Currency)throw new TypeError("The input has already been instanced. Use the static method `Currency.data(input)` to get the instance.");this.events=new Set,this.input=t,this.opts.init&&(this.input.value=Currency.masking(this.input.value,{...this.opts.maskOpts,viaInput:!1})),this.input.addEventListener(this.opts.keyEvent,this),this.events.add(this.opts.keyEvent),this.input.addEventListener("click",this),this.events.add("click"),this.opts.triggerOnBlur&&(this.input.addEventListener("blur",this),this.events.add("blur")),this.input[GUID]=this.#e(),instances.set(this.input[GUID],this)}getUnmasked(){return Currency.unmasking(this.input.value)}#e(){return globalThis?.crypto?.randomUUID?globalThis.crypto.randomUUID().replaceAll("-",""):Number(Math.random()).toString(16).slice(2,8)+Date.now().toString(16)}onMasking(t){if(this.opts.backspace&&"deleteContentBackward"===t?.inputType)return;this.input.value=Currency.masking(this.input.value,this.opts.maskOpts);const e=Currency.position(this.input.value);this.input.setSelectionRange(e,e)}onClick(){const t=Currency.position(this.input.value);this.input.focus(),this.input.setSelectionRange(t,t)}destroy(){this.input.value=Currency.unmasking(this.input.value);for(const t of this.events)this.input.removeEventListener(t,this);instances.has(this.input[GUID])&&instances.delete(this.input[GUID])}handleEvent(t){"click"===t.type?this.onClick(t):this.onMasking(t)}};
+
+
+	$(document).off('focus.it.mask.currency').on('focus.it.mask.currency', '.mask-input[data-masktype="currency"]', function(e){
+		new Currency($(this)[0], {
+			backspace: true,
+			maskOpts: {locales: 'en-US', /*options: { style: 'currency', currency: 'USD'}*/}
+		});
+	});
+
 	//LISTEN FOR FOR ELEMENTS THAT NEED MASKING
+	
 	$(document).off('keyup.inputMasker blur.inputMasker focus.inputMaske').on('keyup.inputMasker blur.inputMasker focus.inputMaske', '.mask-input', function(e){
 		e.stopPropagation();
 	    if($(this).attr('data-masktype') == 'ssn') imask(this, mssn);
 	    if($(this).attr('data-masktype') == 'phone') imask(this, mphone);
 	    if($(this).attr('data-masktype') == 'date') imask(this, mdate);
-	 });
+		if($(this).attr('data-masktype') == 'percent') imask(this, mpercent);
+		if($(this).attr('data-masktype') == 'date-mmyyyy') imask(this, mdatemmyyyy);
+		if($(this).attr('data-masktype') == 'credit'){
+			//$(this).attr('data-valid-cc', luhnCCCheck($(this).val()));
+			if(!luhnCCCheck($(this).val())){
+				$(this)[0].setCustomValidity("Invalid Credit Card Number");
+			}
+			imask(this, mcreditcard);
+		} 
+		//if ($(this).attr('data-masktype') == 'currency') imask(this, mcurrency);
+	});
+	 
+
+	function iMaskWrap(){
+		$('.mask-input:not(.mask-input-initialized)').each(function(k, v){
+			if($(v).attr('data-masktype') == 'ssn') imask(v, mssn);
+		    if($(v).attr('data-masktype') == 'phone') imask(v, mphone);
+		    if($(v).attr('data-masktype') == 'date') imask(v, mdate);
+			if($(v).attr('data-masktype') == 'percent') imask(v, mpercent);
+			if($(v).attr('data-masktype') == 'credit'){
+				$(v).attr('data-valid-cc', luhnCCCheck($(v).val()));
+				imask(v, mcreditcard);
+			} 
+			if($(v).attr('data-masktype') == 'date-mmyyyy'){
+				$(v).attr('minlength', '7');
+				$(v).attr('maxlength', '7');
+				imask(v, mdatemmyyyy)
+			} 
+			if($(v).attr('data-masktype') == 'currency'){
+				//$(v).val(Number($(v).val().replace(/[^\d.]/g, ''), '').toLocaleString('en-US'))
+				$(v).val(number_format(Number($(v).val().replace(/[^\d.]/g, ''), '')))
+				new Currency($(v)[0], {backspace: true, triggerOnBlur: true,  maskOpts: {locales: 'en-US', minimumSignificantDigits: 1, minimumFractionDigits: 2 /*options: { style: 'currency', currency: 'USD'}*/}});
+			} 
+			$(k).addClass('mask-input-initialized');
+		});
+	}
+
+	function mcreditcard(v){
+		var r = v.replace(/\D/g,"");
+		if(r.length > 12){
+			r = r.replace(/(\d{4})(\d{4})(\d{4})(\d{1,4})/, "$1-$2-$3-$4");
+		}
+		else if(r.length > 8){
+			r = r.replace(/(\d{4})(\d{4})(\d{1,4})/, "$1-$2-$3");
+		}
+		else if(r.length > 4){
+			r = r.replace(/(\d{4})(\d{1,4})/, "$1-$2");
+		}
+		else if(r.length){
+			r = r.replace(/(\d{1,4})/, "$1");
+		}
+		return r;
+	}
 
 	//MASK A FIELD VALUE
 	function imask(o, f) {
@@ -1519,6 +1643,59 @@ function init_fill_height(trigger = true){
 	    }
 	    return r;
 	}
+
+	function mdatemmyyyy(v){
+		var r = v.replace(/\D/g,"");
+
+		if(r.length > 2){
+			r = r.replace(/^(\d{2})(\d{1,4}).*/,"$1/$2");
+		}
+		else{
+			r = r.replace(/^(\d*)/, "$1");
+		}
+		return r;
+	}
+
+	// MASK PERCENTAGE (NUMBER SHOULD NOT BE GREATER THAN 100)
+	function mpercent(v) {
+		var r = v.replace(/\D/g, ""); // Remove non-numeric characters
+		r = parseInt(r, 10); // Convert to integer
+		if (isNaN(r)) {
+			return ""; // Return empty string if not a number
+		}
+		// Ensure the number is not greater than 100
+		r = Math.min(r, 100);
+		return r.toString(); // Convert back to string
+	}
+
+	// MASK CURRENCY
+	function mcurrency(v) {
+		// Remove non-numeric characters and leading zeros
+		v = v.replace(/[^\d.]/g, '').replace(/^0+(?=\d)/, '');
+		// v = Number(v.replace(/[^\d.]/g, ''), '').toLocaleString();
+		// return v;
+		// Split the string into integer and decimal parts
+		var parts = v.split('.');
+		var integerPart = parts[0] || '';
+		var decimalPart = parts[1] || '';
+	
+		// Add commas to the integer part
+		integerPart = integerPart.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+	
+		// Limit the decimal part to two digits
+		decimalPart = decimalPart.slice(0, 2);
+	
+		// If the user typed a dot at the end, automatically add two zeros
+		if (v.endsWith('.')) {
+			decimalPart += '00';
+		}
+	
+		// Combine integer and decimal parts with a period
+		var result = integerPart + (decimalPart ? '.' + decimalPart : '');
+	
+		return result;
+	}
+	
 
 	// TOGGLE SHOW/HIDE FOR ANY PASSWORD FIELD
 	// USAGE: Set attrib data-field-name to password field id attr and add toggle-show-hide class
