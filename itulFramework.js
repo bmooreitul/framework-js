@@ -360,7 +360,109 @@ function init_fill_height(trigger = true){
 
 	//--------------------------------------- END AJAX FILE LISTENERS AND FUNCTIONS -------------------------//
 
+	//--------------------------------------- BEGIN REQUIRE CONFIRM -------------------------//
+	/*
+        OPTIONS:
+        data-redirect           : boolean   | default : true | TOGGLE REDIRECT TO href ATTRIBUTE (true) OR TRIGER THE ORIGINAL ELEMENT CLICK EVENT (false|default)
+        data-confirm-msg        : string    | default : 'Are you sure you want to do this?' | THE MESSAGE THAT WILL DISPLAY IN THE MODAL
+        data-confirm-btn-text   : string    | default : 'Yes' | THE TEXT OF THE MODAL CONFIRM BUTTON
+        data-decline-btn-text   : string    | default : 'Cancel' | THE TEXT OF THE MODAL DECLINE BUTTON
+        data-confirm-title      : string    | default : 'Please Confirm' | THE TEXT FOR THE MODAL TITLE
+    */
 
+    $(document).off('mouseenter.MouseOverRequireConfirm').on('mouseenter.MouseOverRequireConfirm', '.require-confirm', function(e){
+
+        e.preventDefault();
+        //e.stopImmediatePropagation();
+        var width           = $(this).outerWidth();
+        var height          = $(this).outerHeight();
+        var offset          = $(this).offset();
+        var newOffset       = $(this)[0].getBoundingClientRect();
+        var that            = $(e.currentTarget);
+        var redirect        = ($(this).data('redirect') == false || $(this).attr('data-redirect') == 'false') ? false : true;
+        var overlay         = $('<div class="require-confirm-overlay"></div>').css({width: width+'px', height: height+'px', top: newOffset.top+'px', left:newOffset.left+'px',  position:'fixed', 'z-index': '9999999'});
+        var conf_msg        = typeof($(this).attr('data-confirm-msg')) !== 'undefined' && $(this).attr('data-confirm-msg').length ? $(this).attr('data-confirm-msg') : 'Are you sure you want to do this?';
+        var acceptBtnTxt    = typeof($(this).attr('data-confirm-btn-text')) !== 'undefined' ? $(this).attr('data-confirm-btn-text') : 'Yes';
+        var declineBtnTxt   = typeof($(this).attr('data-decline-btn-text')) !== 'undefined' ? $(this).attr('data-decline-btn-text') : 'Cancel';
+        var modalTitle      = typeof($(this).attr('data-confirm-title')) !== 'undefined' ? $(this).attr('data-confirm-title') : 'Please Confirm';
+
+        $(overlay).data('trigger_element', that);
+        $(this).data('confirm_overlay', $(overlay));
+        $(overlay).data('conf_msg', conf_msg);
+        $(overlay).data('require_confirm_config', {
+            ele             : $(that),
+            redirect        : redirect,
+            body            : conf_msg,
+            title           : modalTitle,
+            declineBtn      : $('<button type="button" class="btn btn-link confirmation-dismiss-btn" data-bs-dismiss="modal">'+declineBtnTxt+'</button>'),
+            confirmBtn      : $('<button type="button" class="btn btn-primary" data-bs-dismiss="modal">'+acceptBtnTxt+'</button>').data('confirmation_target', $(that)).data('redirect', redirect).click(function(e){
+                var that = $(this).data('confirmation_target');
+                $(that).data('confirmed', 'true');
+                $(that).attr('data-confirmed', 'true');
+                if($(this).data('redirect') == true){
+                    window.location.href = $(that).attr('href');
+                }
+                else{
+                    $(that).trigger('click');
+                    $('.modal').modal('hide');
+                }
+            })
+        });
+
+        $(overlay).click(function(e){
+            e.preventDefault();
+            e.stopPropagation();
+
+            if(typeof($(that).attr('id')) == 'undefined') $(that).attr('id', 'confirmable-'+Date.now());
+
+            var dismissButton   = $('<button type="button" class="btn btn-link confirmation-dismiss-btn" data-bs-dismiss="modal">'+$(this).data('require_confirm_config').declineBtnTxt+'</button>');
+            var confirmBtn      = $('<button type="button" class="btn btn-primary" data-bs-dismiss="modal">'+$(this).data('require_confirm_config').acceptBtnTxt+'</button>').data('confirmation_target', that).data('redirect', redirect);
+
+            $(confirmBtn).click(function(){
+                var that = $(this).data('confirmation_target');
+                $(that).data('confirmed', 'true');
+                $(that).attr('data-confirmed', 'true');
+                //$(that).click();
+                if($(this).data('redirect') == true){
+                    window.location.href = $(that).attr('href');
+                }
+                else{
+                    $(that).trigger('click');
+                    $('.modal').modal('hide');
+                }
+            });
+
+            var m = $(
+                '<div class="modal fade" id="ajax-modal" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1" role="dialog" aria-hidden="true">'+
+                    '<div class="modal-dialog modal-dialog-centered" role="document">'+
+                        '<div class="modal-content">'+
+                            '<div class="modal-header">' +
+                                '<h5 class="modal-title d-inline-block">'+$(this).data('require_confirm_config').title+'</h5>'+
+                            '</div>'+
+                            '<div class="modal-body">'+
+                                $(this).data('require_confirm_config').body+
+                            '</div>'+
+                            '<div class="modal-footer">'+
+                            '</div>'+
+                        '</div>'+
+                    '</div>'+
+                '</div>'
+            );
+
+            $(m).find('.modal-footer').append($(this).data('require_confirm_config').declineBtn);
+            $(m).find('.modal-footer').append($(this).data('require_confirm_config').confirmBtn);
+            $('body').append($(m));
+            $(m).modal('show');
+        });
+        $(this).prepend($(overlay));
+        return;
+    });
+
+    $(document).off('mouseleave.MouseOutRequireConfirm').on('mouseleave.MouseOutRequireConfirm', '.require-confirm', function(e){
+        $(this).find('.require-confirm-overlay').remove();
+    });
+
+    //--------------------------------------- END REQUIRE CONFIRM -------------------------//
 
 
 	//--------------------------------------- BEGIN DRAG AND DROP FILE UPLOADS -------------------------//	
