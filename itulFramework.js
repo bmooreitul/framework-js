@@ -1027,6 +1027,118 @@ function init_fill_height(trigger = true){
 	//--------------------------------------- END AJAX FILE UPLOAD PROGRESS -------------------------//
 
 
+	//--------------------------------------- BEGIN AJAX SIDEBAR LISTENING AND FUNCTIONS -------------------------//
+
+	$(document).off('click.itul.sidePanel.close').on('click.itul.sidePanel.close', '[data-itul-dismiss="sidepanel"]', function(e){
+	    e.preventDefault();
+	    e.stopPropagation();
+	
+	    var target = $(this).closest('.itul-sidepanel');
+	    $(target).trigger('itul.sidepanel.hiding');
+	    $(target).removeClass('panel-open');
+	    var that = this; 
+	    setTimeout(function(){ 
+	        $(target).trigger('itul.sidepanel.hidden');
+	        var sidePanelWrap = $(target).closest('.itul-sidepanel');
+	        try{
+	            $(sidePanelWrap).data('sidepanel_overlay').remove();
+	        }
+	        catch{
+	
+	        }
+	        $(sidePanelWrap).remove();
+	        //$(target).closest('.itul-sidepanel').remove(); 
+	    }, 500);
+	});
+	
+	//LISTEN FOR AJAX SIDEPANEL REQUEST
+	var sidePanelTrigger;
+	$(document).off('click.itul.sidePanel.trigger').on('click.itul.sidePanel.trigger', 'a.show-side-panel', function(e){
+	
+	    //PREVENT OTHER EVENTS 
+	    e.preventDefault();
+	    e.stopPropagation();
+	    spinner();
+
+		//APPEND THE STYLES
+    	if(!$('style#itul-sidepanel-styles').length) $('head').append('<style id="itul-sidepanel-styles">.itul-sidepanel-overlay { top:0; left:0; right:0; bottom:0; position: fixed; background-color: #00000096;} .itul-sidepanel { background: #fff; border-left:1px solid #E6F0F9; overflow-y: auto; right:-680px; width:680px; position: fixed; top:0; bottom:0; transition: all .5s; z-index: 1000; box-shadow: 0 0 10px rgba(0,0,0,0.18); } .itul-sidepanel.itul-sidepanel-sm { right:-370px; width:370px; } .itul-sidepanel.itul-sidepanel-md { right:-680px; width:680px; } .itul-sidepanel.itul-sidepanel-lg { right:-860px; width:860px; } .itul-sidepanel.itul-sidepanel-xl { right:-1200px; width:1200px; } .itul-sidepanel.panel-open { right:0px; } .itul-sidepanel .side-panel-header-wrap { border-bottom:1px solid #E6F0F9;} .itul-sidepanel .side-panel-header-wrap, .itul-sidepanel .side-panel-body-wrap { padding:15px 30px;} .itul-sidepanel .side-panel-body-wrap hr.side-panel-divider { opacity: 1; margin-left: -30px; margin-right: -30px; margin-top: 1.5rem !important; margin-bottom: 1.5rem !important;}</style>');
+
+		//MEMORIZE THE TRIGGERING ELEMENT
+	    sidePanelTrigger = $(this);
+	    var tmpSidePanelTrigger = $(this);
+	
+	    //REMOVE EXISTING SIDEPANEL
+	    $('.itul-sidepanel').remove();
+	    $('.itul-sidepanel-overlay').remove();
+	
+	    //DEFINE VARIABLES
+	    var url           = $(this).attr('href');
+	    var data          = $(this).data();
+	    var type          = typeof($(this).attr('method')) !== 'undefined' ? $(this).attr('method') : 'get';
+	    var ele           = $(this);
+	    var callbackName  = typeof($(this).attr('callback')) ? $(this).attr('callback') : null;
+	    var title         = typeof($(this).attr('title')) !== 'undefined' ? $(this).attr('title') : '';
+	    var size          = typeof($(this).attr('data-itul-sidepanel-size')) !== 'undefined' ? $(this).attr('data-itul-sidepanel-size') : 'md';
+	
+	    //EXECUTE AJAX
+	    $.ajax({
+	        url     : url,
+	        data    : data,
+	        type    : type,
+	        success : function(data){
+	
+	            data = typeof(data) == 'object' ? $(data.html) : $(data);
+	
+	            var sidePanelWrap = $('<div class="itul-sidepanel"></div>');    
+	            $(sidePanelWrap).data('sidepanel_trigger', $(tmpSidePanelTrigger));
+	            if(size.length) $(sidePanelWrap).addClass('itul-sidepanel-'+size);
+	            $('body').append($(sidePanelWrap));
+	            var header = $(
+	                '<div class="side-panel-header-wrap">'+
+	                    '<div class="row">'+
+	                        '<div class="col side-panel-title-wrap"><h2>'+title+'</h2></div>'+
+	                        '<div class="col-auto side-panel-close-btn-wrap"></div>'+
+	                    '</div>'+
+	                '</div>'
+	            );
+	
+	            var dismissBtn = $('<a class="dismiss-side-panel-btn fw-bold" href="#" data-itul-dismiss="sidepanel">X</a>');
+	
+	            $(header).find('.side-panel-close-btn-wrap').append($(dismissBtn));
+	            $(sidePanelWrap).append($(header));
+	            var bodyWrap = $('<div class="side-panel-body-wrap"></div>');
+	            $(bodyWrap).append($(data));
+	            $(sidePanelWrap).append($(bodyWrap));
+	            var sidePanelOverlay = $('<div class="itul-sidepanel-overlay"></div>').click(function(){
+	                var forceCloseBtn = $('<a href="#" data-itul-dismiss="sidepanel" style="display:none"></a>');
+	                $(this).next('.itul-sidepanel').append($(forceCloseBtn));
+	                $(forceCloseBtn).trigger('click.itul.sidePanel.close');
+	            });
+	            $(sidePanelWrap).before($(sidePanelOverlay));
+	            $(sidePanelWrap).data('sidepanel_overlay', $(sidePanelOverlay));
+	            $(sidePanelWrap).trigger('itul.sidepanel.showing');
+	            
+	            //POPULATE THE SIDE PANEL HTML
+	            setTimeout(function(){
+	                $(sidePanelWrap).addClass('panel-open');
+	                setTimeout(function(){
+	                    $(sidePanelWrap).trigger('itul.sidepanel.shown');
+	                }, 500);
+	            }, 1);
+	
+	            //HANDLE NAMESPACED CALLBACK FUNCTION
+	            if(callbackName !== null){
+	                if(typeof(window[callbackName]) == 'function'){
+	                    window[callbackName](data, ele)
+	                }
+	            }
+	        }
+	    }).done(function(){
+	        spinner('hide');
+	    });
+	});
+
+	//--------------------------------------- END AJAX SIDEBAR LISTENING AND FUNCTIONS -------------------------//
 
 
 
