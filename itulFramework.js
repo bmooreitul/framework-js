@@ -706,12 +706,16 @@ function init_fill_height(trigger = true){
 		e.preventDefault();
 		e.stopPropagation();
 
+		//DISABLE THE BUTTON TO PREVENT MULTIPLE CLICKS
+		var ele = $(this);
+		ele.prop('disabled', true); // Disable the button
+
 		//SHOW THE SPINNER
 		spinner();
 
 		//PARSE THE ATTRIBUTES
 		var callback_name   = $(this).attr('callback');
-		var ele             = $(this);
+		
 		var target          = $(this).attr('data-element') !== undefined ? $($(this).attr('data-element')) : false;
 		var url             = $(this).attr('data-url') !== undefined ? $(this).attr('data-url') : $(this).attr('href');
 		var callback_type   = $(this).attr('data-callback_type') !== undefined ? $(this).attr('data-callback_type') : 'html';
@@ -762,7 +766,13 @@ function init_fill_height(trigger = true){
 					else{
 						spinner('hide');
 					}
+
+					
 				}
+			}).done(function(){
+				spinner('hide');
+				//RE-ENABLE THE BUTTON AFTER SUCCESS
+				ele.prop('disabled', false);
 			});
 		}
 		else{
