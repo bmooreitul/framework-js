@@ -1183,7 +1183,7 @@ function init_fill_height(trigger = true){
 		var modalHeader 	=
 			'<div class="modal-header">' +
 				'<h5 class="modal-title d-inline-block">' + options.title + '</h5>'+
-				(options.dismissable ? '<button type="button" data-bs-dismiss="modal" aria-label="Close" class="close"><span aria-hidden="true">×</span></button>' : '')+
+				(options.dismissable ? '<button type="button" data-bs-dismiss="modal" aria-label="Close" class="close btn-close"><span aria-hidden="true">×</span></button>' : '')+
 			'</div>';
 
 		//SET THE MODAL HEADER TO EMPTY IF NO TITLE AND NOT DISMISSABLE
@@ -1296,7 +1296,7 @@ function init_fill_height(trigger = true){
 		var addn_dialog_class	= typeof($(this).attr('modal-dialog-class')) !== 'undefined' ? $(this).attr('modal-dialog-class') : '';
 		var size 				= typeof($(this).attr('data-modal-size')) !== 'undefined' ? $(this).attr('data-modal-size') : 'modal-lg';
 		var dismissable 		= typeof($(this).attr('data-modal-dismissable')) !== 'undefined' && $(this).attr('data-modal-dismissable') == 'false' ? false : true;
-		var dismissButton 		= dismissable ? '<button type="button" data-bs-dismiss="modal" aria-label="Close" class="close"><span aria-hidden="true">×</span></button>' : '';
+		var dismissButton 		= dismissable ? '<button type="button" data-bs-dismiss="modal" aria-label="Close" class="close btn-close"><span aria-hidden="true">×</span></button>' : '';
 
 
 		if(url.indexOf('#') >= 0){
